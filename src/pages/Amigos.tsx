@@ -20,7 +20,7 @@ export default function Amigos({ user }: Props) {
       .select('friend_id, friend:users!friend_id(apodo, puntos_total, rango)')
       .eq('user_id', user.id)
       .then(({ data }) => {
-        setFriends((data ?? []) as Friend[])
+        setFriends((data ?? []) as unknown as Friend[])
         setLoading(false)
       })
   }, [user.id])

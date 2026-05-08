@@ -84,7 +84,7 @@ export default function StickerSheet({ sticker, userSticker, onClose, onUpdated 
           sticker_id: sticker.id!,
           estado,
           photo_path: path,
-          cantidad: estado === 'falta' ? 0 : estado === 'tengo' ? 1 : 2,
+          cantidad: estado === 'tengo' ? 1 : 2,
         } as UserSticker)
       }
     } finally {

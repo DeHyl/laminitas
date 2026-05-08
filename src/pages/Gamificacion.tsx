@@ -14,11 +14,6 @@ interface Mission {
   progress?: { valor_actual: number; completada: boolean }
 }
 
-interface Friend {
-  friend_id: string
-  friend: { apodo: string; puntos_total: number; rango: string }
-}
-
 interface Props {
   user: AppUser
   onUserUpdate: (u: AppUser) => void
@@ -44,7 +39,7 @@ export default function Gamificacion({ user, onUserUpdate }: Props) {
       .then(({ data }) => {
         const ms = (data ?? []).map(m => ({
           ...m,
-          progress: Array.isArray(m.progress) ? m.progress.find((p: { valor_actual: number; completada: boolean }) => true) : m.progress,
+          progress: Array.isArray(m.progress) ? m.progress.find((_p: { valor_actual: number; completada: boolean }) => true) : m.progress,
         }))
         setMissions(ms)
       })
@@ -55,7 +50,7 @@ export default function Gamificacion({ user, onUserUpdate }: Props) {
       .select('friend:users!friend_id(apodo, puntos_total, rango)')
       .eq('user_id', user.id)
       .then(({ data }) => {
-        const friends = (data ?? []).map((f: Friend) => f.friend as { apodo: string; puntos_total: number; rango: string })
+        const friends = (data ?? []).map((f: { friend: { apodo: string; puntos_total: number; rango: string }[] }) => f.friend[0] as { apodo: string; puntos_total: number; rango: string })
         const all = [{ apodo: user.apodo, puntos_total: user.puntos_total, rango: user.rango }, ...friends]
         all.sort((a, b) => b.puntos_total - a.puntos_total)
         setLeaderboard(all)

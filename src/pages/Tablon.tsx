@@ -35,7 +35,7 @@ export default function Tablon({ user }: Props) {
         lamina_busco:stickers!lam_busco_id(codigo, jugador)`)
       .eq('estado', 'abierta')
       .order('created_at', { ascending: false })
-    setTrades((data ?? []) as Trade[])
+    setTrades((data ?? []) as unknown as Trade[])
     setLoading(false)
   }
 
@@ -56,7 +56,7 @@ export default function Tablon({ user }: Props) {
       .select('sticker_id, sticker:stickers!sticker_id(id, codigo)')
       .eq('user_id', user.id)
       .eq('estado', 'repetida')
-      .then(({ data }) => setMyRepetidas((data ?? []) as typeof myRepetidas))
+      .then(({ data }) => setMyRepetidas((data ?? []) as unknown as typeof myRepetidas))
 
     supabase
       .from('stickers')
