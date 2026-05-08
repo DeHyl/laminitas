@@ -8,24 +8,34 @@ config({ path: '.env.local' })
 const url = process.env.VITE_SUPABASE_URL!
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-// Use raw fetch to bypass Supabase SDK browser-detection guard on sb_secret_ keys.
-// Prefer resolution=merge-duplicates performs an upsert on the unique `numero` column.
-const res = await fetch(`${url}/rest/v1/stickers`, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Prefer': 'resolution=merge-duplicates,return=minimal',
-    'apikey': key,
-    'Authorization': `Bearer ${key}`,
-    'X-Client-Info': 'supabase-js-node/2.0.0',
-  },
-  body: JSON.stringify(STICKERS),
-})
-
-if (!res.ok) {
-  const text = await res.text()
-  console.error(`Seed failed (${res.status}):`, text)
-  process.exit(1)
+const headers = {
+  'Content-Type': 'application/json',
+  'Prefer': 'resolution=merge-duplicates,return=minimal',
+  'apikey': key,
+  'Authorization': `Bearer ${key}`,
+  'X-Client-Info': 'supabase-js-node/2.0.0',
 }
 
-console.log(`Seeded ${STICKERS.length} stickers OK`)
+// Upsert all stickers in batches of 200 (merge-duplicates on unique `numero`)
+const BATCH = 200
+let inserted = 0
+
+for (let i = 0; i < STICKERS.length; i += BATCH) {
+  const batch = STICKERS.slice(i, i + BATCH)
+  const res = await fetch(`${url}/rest/v1/stickers?on_conflict=numero`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(batch),
+  })
+
+  if (!res.ok) {
+    const text = await res.text()
+    console.error(`Seed failed at batch ${i}-${i + BATCH} (${res.status}):`, text)
+    process.exit(1)
+  }
+
+  inserted += batch.length
+  console.log(`Inserted ${inserted}/${STICKERS.length}...`)
+}
+
+console.log(`✓ Seeded ${STICKERS.length} stickers OK`)
