@@ -1,42 +1,30 @@
 import { supabase } from './supabase'
 
-export async function signInOrCreate(apodo: string): Promise<{ userId: string; apodo: string }> {
-  // Check if apodo already exists
-  const { data: existing } = await supabase
-    .from('users')
-    .select('id, apodo')
-    .eq('apodo', apodo)
-    .single()
-
-  if (existing) {
-    // Sign in anonymously and we'll reuse the profile by apodo
-    const { data: authData, error } = await supabase.auth.signInAnonymously()
-    if (error || !authData.user) throw new Error(error?.message ?? 'Auth failed')
-    // Note: existing user sessions are stored in localStorage by Supabase SDK
-    return { userId: existing.id, apodo: existing.apodo }
-  }
-
-  // New user — sign in anonymously then create profile
-  const { data: authData, error: authError } = await supabase.auth.signInAnonymously()
-  if (authError || !authData.user) throw new Error(authError?.message ?? 'Auth failed')
-
-  const { error: insertError } = await supabase
-    .from('users')
-    .insert({ id: authData.user.id, apodo })
-
-  if (insertError) throw new Error(insertError.message)
-
-  return { userId: authData.user.id, apodo }
+function toEmail(apodo: string): string {
+  return `${apodo.toLowerCase().replace(/[^a-z0-9]/g, '')}@laminitas.app`
 }
 
-export async function getSession() {
-  const { data: { session } } = await supabase.auth.getSession()
-  return session
+export async function checkApodo(apodo: string): Promise<boolean> {
+  const { data, error } = await supabase.functions.invoke('sign-in', {
+    body: { action: 'check', apodo },
+  })
+  if (error) throw new Error(error.message)
+  return (data as { exists: boolean }).exists
 }
 
-export async function getCurrentUser() {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-  const { data } = await supabase.from('users').select('*').eq('id', user.id).single()
-  return data
+export async function createUser(apodo: string, pin: string): Promise<void> {
+  const { data, error } = await supabase.functions.invoke('sign-in', {
+    body: { action: 'create', apodo, pin },
+  })
+  if (error) throw new Error(error.message)
+  if ((data as { error?: string }).error) throw new Error((data as { error: string }).error)
+}
+
+export async function loginUser(apodo: string, pin: string): Promise<string> {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: toEmail(apodo),
+    password: pin,
+  })
+  if (error) throw new Error('PIN incorrecto')
+  return data.user.id
 }
