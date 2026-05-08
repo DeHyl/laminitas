@@ -26,11 +26,12 @@ export default function App() {
     let cancelled = false
 
     const init = async () => {
-      // Failsafe: never stay on loading screen more than 8 seconds
-      const bail = setTimeout(() => {
-        console.warn('[laminitas] init timed out — forcing loading=false')
+      // If getSession() hangs (stale anon session), sign out and show login fast
+      const bail = setTimeout(async () => {
+        console.warn('[laminitas] init timed out — clearing stale session')
+        await supabase.auth.signOut()
         if (!cancelled) setLoading(false)
-      }, 8000)
+      }, 3000)
 
       try {
         console.log('[laminitas] getSession...')
