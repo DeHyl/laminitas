@@ -5,6 +5,7 @@ import Album from './pages/Album'
 import Tablon from './pages/Tablon'
 import Amigos from './pages/Amigos'
 import Gamificacion from './pages/Gamificacion'
+import ChatDT from './components/ChatDT'
 
 export type Tab = 'album' | 'tablon' | 'amigos' | 'gamificacion'
 
@@ -89,6 +90,7 @@ export default function App() {
         {tab === 'tablon'       && <Tablon user={user} />}
         {tab === 'amigos'       && <Amigos user={user} />}
         {tab === 'gamificacion' && <Gamificacion user={user} onUserUpdate={setUser} />}
+        <ChatDT user={user} />
       </div>
 
       <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-200 flex">
