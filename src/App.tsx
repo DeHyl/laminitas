@@ -23,16 +23,22 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('album')
 
   useEffect(() => {
-    // Check for existing session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
-        const { data } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', session.user.id)
-          .single()
-        if (data) setUser(data as AppUser)
+        try {
+          const { data } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', session.user.id)
+            .single()
+          if (data) setUser(data as AppUser)
+        } catch {
+          // user row not found — proceed to login screen
+        }
       }
+    }).catch(() => {
+      // getSession itself failed (bad env vars, network error)
+    }).finally(() => {
       setLoading(false)
     })
 
