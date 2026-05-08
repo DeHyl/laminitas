@@ -23,7 +23,29 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('album')
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    let cancelled = false
+
+    const init = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!cancelled && session?.user) {
+          const { data } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', session.user.id)
+            .single()
+          if (!cancelled && data) setUser(data as AppUser)
+        }
+      } catch (e) {
+        console.error('[laminitas] auth init error:', e)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    init()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         try {
           const { data } = await supabase
@@ -32,30 +54,16 @@ export default function App() {
             .eq('id', session.user.id)
             .single()
           if (data) setUser(data as AppUser)
-        } catch {
-          // user row not found — proceed to login screen
-        }
-      }
-    }).catch(() => {
-      // getSession itself failed (bad env vars, network error)
-    }).finally(() => {
-      setLoading(false)
-    })
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        const { data } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', session.user.id)
-          .single()
-        if (data) setUser(data as AppUser)
+        } catch { /* ignore */ }
       } else {
         setUser(null)
       }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      cancelled = true
+      subscription.unsubscribe()
+    }
   }, [])
 
   // Handle invite token in URL
