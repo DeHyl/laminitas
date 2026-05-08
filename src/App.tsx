@@ -26,19 +26,31 @@ export default function App() {
     let cancelled = false
 
     const init = async () => {
+      // Failsafe: never stay on loading screen more than 8 seconds
+      const bail = setTimeout(() => {
+        console.warn('[laminitas] init timed out — forcing loading=false')
+        if (!cancelled) setLoading(false)
+      }, 8000)
+
       try {
-        const { data: { session } } = await supabase.auth.getSession()
+        console.log('[laminitas] getSession...')
+        const { data: { session }, error: se } = await supabase.auth.getSession()
+        console.log('[laminitas] session:', session?.user?.id ?? 'null', 'error:', se)
+
         if (!cancelled && session?.user) {
-          const { data } = await supabase
+          console.log('[laminitas] querying users...')
+          const { data, error: ue } = await supabase
             .from('users')
             .select('*')
             .eq('id', session.user.id)
-            .single()
+            .maybeSingle()
+          console.log('[laminitas] users result:', data, 'error:', ue)
           if (!cancelled && data) setUser(data as AppUser)
         }
       } catch (e) {
         console.error('[laminitas] auth init error:', e)
       } finally {
+        clearTimeout(bail)
         if (!cancelled) setLoading(false)
       }
     }
