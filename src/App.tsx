@@ -26,34 +26,41 @@ export default function App() {
     let cancelled = false
 
     const init = async () => {
-      // If getSession() hangs (stale anon session), sign out and show login fast
-      const bail = setTimeout(async () => {
-        console.warn('[laminitas] init timed out — clearing stale session')
-        await supabase.auth.signOut()
-        if (!cancelled) setLoading(false)
-      }, 3000)
+      // Race getSession against a 3s timeout. signOut({scope:'local'}) only
+      // wipes localStorage — no network call, so it cannot hang.
+      const timeout = new Promise<null>(resolve =>
+        setTimeout(() => {
+          console.warn('[laminitas] getSession timed out — clearing local session')
+          supabase.auth.signOut({ scope: 'local' })
+          resolve(null)
+        }, 3000)
+      )
 
+      let session = null
       try {
         console.log('[laminitas] getSession...')
-        const { data: { session }, error: se } = await supabase.auth.getSession()
-        console.log('[laminitas] session:', session?.user?.id ?? 'null', 'error:', se)
+        const result = await Promise.race([
+          supabase.auth.getSession().then(r => r.data.session),
+          timeout,
+        ])
+        console.log('[laminitas] session:', result?.user?.id ?? (result === null ? 'timeout' : 'null'))
+        session = result
+      } catch (e) {
+        console.error('[laminitas] auth init error:', e)
+      }
 
-        if (!cancelled && session?.user) {
-          console.log('[laminitas] querying users...')
-          const { data, error: ue } = await supabase
+      if (!cancelled && session?.user) {
+        try {
+          const { data } = await supabase
             .from('users')
             .select('*')
             .eq('id', session.user.id)
             .maybeSingle()
-          console.log('[laminitas] users result:', data, 'error:', ue)
           if (!cancelled && data) setUser(data as AppUser)
-        }
-      } catch (e) {
-        console.error('[laminitas] auth init error:', e)
-      } finally {
-        clearTimeout(bail)
-        if (!cancelled) setLoading(false)
+        } catch { /* ignore */ }
       }
+
+      if (!cancelled) setLoading(false)
     }
 
     init()
