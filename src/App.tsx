@@ -26,12 +26,16 @@ export default function App() {
     let cancelled = false
 
     const init = async () => {
-      // Race getSession against a 3s timeout. signOut({scope:'local'}) only
-      // wipes localStorage — no network call, so it cannot hang.
+      // Race getSession against a 3s timeout. On timeout, wipe localStorage
+      // and reload — this gives a fresh Supabase client instance so subsequent
+      // calls (functions.invoke, signInWithPassword) don't inherit the limbo state.
       const timeout = new Promise<null>(resolve =>
         setTimeout(() => {
-          console.warn('[laminitas] getSession timed out — clearing local session')
-          supabase.auth.signOut({ scope: 'local' })
+          console.warn('[laminitas] getSession timed out — reloading with clean session')
+          Object.keys(localStorage)
+            .filter(k => k.startsWith('sb-'))
+            .forEach(k => localStorage.removeItem(k))
+          window.location.reload()
           resolve(null)
         }, 3000)
       )
